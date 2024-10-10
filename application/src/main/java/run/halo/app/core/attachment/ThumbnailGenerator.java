@@ -1,9 +1,12 @@
 package run.halo.app.core.attachment;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -11,12 +14,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.Set;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.imgscalr.Scalr;
+import org.springframework.lang.NonNull;
 
 @Slf4j
 @AllArgsConstructor
@@ -26,6 +31,8 @@ public class ThumbnailGenerator {
      * 30MB
      */
     static final int MAX_FILE_SIZE = 30 * 1024 * 1024;
+
+    private static final Set<String> UNSUPPORTED_FORMATS = Set.of("gif", "svg", "webp");
 
     private final ImageDownloader imageDownloader = new ImageDownloader();
     private final ThumbnailSize size;
@@ -68,17 +75,28 @@ public class ThumbnailGenerator {
         if (file.length() > MAX_FILE_SIZE) {
             throw new IOException("File size exceeds the limit: " + MAX_FILE_SIZE);
         }
-        var formatNameOpt = getFormatName(file);
+        String formatName = getFormatName(file)
+            .orElseThrow(() -> new UnsupportedOperationException("Unknown format"));
+        if (isUnsupportedFormat(formatName)) {
+            throw new UnsupportedOperationException("Unsupported image format for: " + formatName);
+        }
+
         var img = ImageIO.read(file);
         if (img == null) {
-            throw new UnsupportedOperationException(
-                "Unsupported image format for: " + formatNameOpt.orElse("unknown"));
+            throw new UnsupportedOperationException("Cannot read image file: " + file);
         }
-        var thumbnail = Scalr.resize(img, Scalr.Method.SPEED, Scalr.Mode.FIT_TO_WIDTH,
-            size.getWidth());
-        var formatName = formatNameOpt.orElse("jpg");
         var thumbnailFile = getThumbnailFile(formatName);
+        if (img.getWidth() <= size.getWidth()) {
+            Files.copy(tempImagePath, thumbnailFile.toPath(), REPLACE_EXISTING);
+            return;
+        }
+        var thumbnail = Scalr.resize(img, Scalr.Method.AUTOMATIC, Scalr.Mode.FIT_TO_WIDTH,
+            size.getWidth());
         ImageIO.write(thumbnail, formatName, thumbnailFile);
+    }
+
+    private static boolean isUnsupportedFormat(@NonNull String formatName) {
+        return UNSUPPORTED_FORMATS.contains(formatName.toLowerCase());
     }
 
     private File getThumbnailFile(String formatName) {
@@ -155,7 +173,11 @@ public class ThumbnailGenerator {
             File tempFile = File.createTempFile("halo-image-thumb-", ".tmp");
             long totalBytesDownloaded = 0;
             var tempFilePath = tempFile.toPath();
-            try (InputStream inputStream = url.openStream();
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                    + " Chrome/92.0.4515.131 Safari/537.36");
+            try (InputStream inputStream = connection.getInputStream();
                  FileOutputStream outputStream = new FileOutputStream(tempFile)) {
 
                 byte[] buffer = new byte[4096];

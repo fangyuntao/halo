@@ -20,6 +20,8 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import run.halo.app.content.Stats;
+import run.halo.app.core.attachment.extension.LocalThumbnail;
+import run.halo.app.core.attachment.extension.Thumbnail;
 import run.halo.app.core.extension.AnnotationSetting;
 import run.halo.app.core.extension.AuthProvider;
 import run.halo.app.core.extension.Counter;
@@ -38,10 +40,8 @@ import run.halo.app.core.extension.UserConnection;
 import run.halo.app.core.extension.UserConnection.UserConnectionSpec;
 import run.halo.app.core.extension.attachment.Attachment;
 import run.halo.app.core.extension.attachment.Group;
-import run.halo.app.core.extension.attachment.LocalThumbnail;
 import run.halo.app.core.extension.attachment.Policy;
 import run.halo.app.core.extension.attachment.PolicyTemplate;
-import run.halo.app.core.extension.attachment.Thumbnail;
 import run.halo.app.core.extension.content.Category;
 import run.halo.app.core.extension.content.Comment;
 import run.halo.app.core.extension.content.Post;
@@ -630,6 +630,22 @@ public class SchemeInitializer implements ApplicationListener<ApplicationContext
                         .map(UserConnectionSpec::getUsername)
                         .orElse(null)
                 )));
+            is.add(new IndexSpec()
+                .setName("spec.registrationId")
+                .setIndexFunc(simpleAttribute(UserConnection.class,
+                    connection -> Optional.ofNullable(connection.getSpec())
+                        .map(UserConnectionSpec::getRegistrationId)
+                        .orElse(null)
+                ))
+            );
+            is.add(new IndexSpec()
+                .setName("spec.providerUserId")
+                .setIndexFunc(simpleAttribute(UserConnection.class,
+                    connection -> Optional.ofNullable(connection.getSpec())
+                        .map(UserConnectionSpec::getProviderUserId)
+                        .orElse(null)
+                ))
+            );
         });
 
         // security.halo.run

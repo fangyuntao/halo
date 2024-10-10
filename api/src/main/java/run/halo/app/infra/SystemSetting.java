@@ -67,10 +67,11 @@ public class SystemSetting {
     @Data
     public static class User {
         public static final String GROUP = "user";
-        Boolean allowRegistration;
-        Boolean mustVerifyEmailOnRegistration;
+        boolean allowRegistration;
+        boolean mustVerifyEmailOnRegistration;
         String defaultRole;
         String avatarPolicy;
+        String ucAttachmentPolicy;
     }
 
     @Data

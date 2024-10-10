@@ -78,6 +78,7 @@ const publishTimeHelp = computed(() => {
 </script>
 
 <template>
+  <!-- @vue-ignore -->
   <FormKit
     id="post-setting-form"
     v-model="internalFormState"
@@ -194,7 +195,9 @@ const publishTimeHelp = computed(() => {
             max="9999-12-31T23:59"
             :help="publishTimeHelp"
           ></FormKit>
-          <HasPermission :permissions="['system:attachments:view']">
+          <HasPermission
+            :permissions="['system:attachments:view', 'uc:attachments:manage']"
+          >
             <FormKit
               name="cover"
               :label="$t('core.post.settings.fields.cover.label')"
